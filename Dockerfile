@@ -12,7 +12,8 @@ RUN apk add --no-cache \
     openssl-dev \
     curl \
     cmake \
-    unzip
+    unzip \
+    perl
 
 # 构建 LuaJIT（默认支持 ARM64 和 x86_64）
 RUN git clone https://github.com/LuaJIT/LuaJIT \
