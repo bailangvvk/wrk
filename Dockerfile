@@ -37,8 +37,10 @@ RUN git clone https://github.com/bailangvvk/wrk.git . \
 # 第二阶段：最小运行镜像
 FROM alpine
 
-# 安装运行时依赖：OpenSSL
-RUN apk add --no-cache openssl
+# 安装运行时依赖：LuaJIT 动态库依赖 + OpenSSL
+RUN apk add --no-cache \
+    openssl \
+    libgcc
 
 # 复制 LuaJIT 动态库到系统库路径
 COPY --from=builder /usr/local/lib/libluajit-5.1.so.2* /usr/lib/
