@@ -22,32 +22,30 @@ RUN git clone https://github.com/LuaJIT/LuaJIT \
  && make -j$(nproc) \
  && make install PREFIX=${WITH_LUAJIT}
 
-# 把头文件从 luajit-2.1 目录软链接到 /usr/local/include
+# 软链接头文件至 include
 RUN for hdr in lua.h lauxlib.h lualib.h luaconf.h lua.hpp luajit.h; do \
       ln -s ${LUAJIT_INC}/$hdr ${WITH_LUAJIT}/include/$hdr; \
     done
 
-# 克隆 wrk 源码并编译
+# 编译 wrk
 WORKDIR /wrk
 RUN git clone https://github.com/bailangvvk/wrk.git . \
  && make WITH_LUAJIT=${WITH_LUAJIT} \
          LUAJIT_INC=${WITH_LUAJIT}/include \
-         LUAJIT_LIB=${LUAJIT_LIB}
+         LUAJIT_LIB=${WITH_LUAJIT}/lib
 
 # 第二阶段：最小运行镜像
 FROM alpine
 
-# 复制 LuaJIT 运行时库
-COPY --from=builder /usr/local/lib/libluajit-5.1.so.2* /usr/local/lib/
-
-# 更新动态链接器缓存
-RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/luajit.conf
-
-# （可选）安装 OpenSSL 运行时
+# 安装运行时依赖：OpenSSL
 RUN apk add --no-cache openssl
 
+# 复制 LuaJIT 动态库到系统库路径
+COPY --from=builder /usr/local/lib/libluajit-5.1.so.2* /usr/lib/
+
+# 复制 wrk 二进制
 COPY --from=builder /wrk/wrk /usr/local/bin/wrk
 
+# 默认入口和帮助
 ENTRYPOINT ["wrk"]
 CMD ["--help"]
-
