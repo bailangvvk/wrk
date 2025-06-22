@@ -2,7 +2,7 @@ name: Build & Push wrk Multiarch Image
 
 on:
   push:
-    branches: [main]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
