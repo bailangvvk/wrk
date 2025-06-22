@@ -58,13 +58,26 @@
 FROM alpine:3.12 AS build
 ARG WRK2_COMMIT_HASH=44a94c17d8e6a0bac8559b53da76848e430cb7a7
 
-RUN apk add --no-cache openssl-dev zlib-dev git make gcc musl-dev \
- && git clone https://github.com/giltene/wrk2 --branch master --single-branch \
- && cd wrk2 && git checkout $WRK2_COMMIT_HASH && make
+# 安装构建 wrk2 所需工具和静态库
+RUN apk add --no-cache \
+  openssl-dev \
+  zlib-dev \
+  git \
+  make \
+  gcc \
+  musl-dev \
+  musl-static
 
-FROM alpine:3.12
-RUN apk add --no-cache libgcc
-RUN adduser -D -H wrk_user
-USER wrk_user
-COPY --from=build /wrk2/wrk /usr/bin/wrk2
-ENTRYPOINT ["/usr/bin/wrk2"]
+# 克隆并构建 wrk2，使用静态链接参数
+RUN git clone https://github.com/giltene/wrk2 && \
+    cd wrk2 && \
+    git checkout $WRK2_COMMIT_HASH && \
+    make CC="musl-gcc" CFLAGS="-static"
+
+# ========================
+# Final: 极小 scratch 镜像
+# ========================
+FROM scratch
+COPY --from=build /wrk2/wrk /wrk
+ENTRYPOINT ["/wrk"]
+
