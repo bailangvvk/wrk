@@ -29,9 +29,14 @@ RUN for hdr in lua.h lauxlib.h lualib.h luaconf.h lua.hpp luajit.h; do \
 # 构建 wrk
 WORKDIR /wrk
 RUN git clone https://github.com/bailangvvk/wrk.git . \
+ && sed -i '/openssl-1.1.1i/d' Makefile \
+ && sed -i '/obj\/lib\/libssl.a/d' Makefile \
  && make WITH_LUAJIT=${WITH_LUAJIT} \
          LUAJIT_INC=${WITH_LUAJIT}/include \
-         LUAJIT_LIB=${WITH_LUAJIT}/lib
+         LUAJIT_LIB=${WITH_LUAJIT}/lib \
+         WITH_OPENSSL=/usr \
+         OPENSSL_INC=/usr/include \
+         OPENSSL_LIB=/usr/lib
 
 # 运行镜像（超小体积）
 FROM alpine
