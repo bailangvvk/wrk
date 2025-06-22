@@ -37,12 +37,17 @@ RUN git clone https://github.com/bailangvvk/wrk.git . \
 # 第二阶段：最小运行镜像
 FROM alpine
 
-# 如果需要 SSL 支持，可保留
+# 复制 LuaJIT 运行时库
+COPY --from=builder /usr/local/lib/libluajit-5.1.so.2* /usr/local/lib/
+
+# 更新动态链接器缓存
+RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/luajit.conf
+
+# （可选）安装 OpenSSL 运行时
 RUN apk add --no-cache openssl
 
-# 复制编译好的二进制
 COPY --from=builder /wrk/wrk /usr/local/bin/wrk
 
-# 默认入口和帮助
 ENTRYPOINT ["wrk"]
 CMD ["--help"]
+
