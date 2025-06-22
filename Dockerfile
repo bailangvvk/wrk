@@ -55,26 +55,29 @@
 # ENTRYPOINT ["wrk"]
 # CMD ["--help"]
 
-FROM alpine:3.18 AS build
+FROM alpine:3.18 as build
 ARG WRK2_COMMIT_HASH=44a94c17d8e6a0bac8559b53da76848e430cb7a7
 
-# 安装构建 wrk2 所需的工具和静态链接依赖
-RUN apk add --no-cache \
-  openssl-dev \
-  zlib-dev \
-  git \
-  make \
-  gcc \
-  musl-dev \
-  musl-static
+# 添加 testing 仓库以启用 musl-static 包
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 
-# 克隆 wrk2 并构建为静态可执行文件
+# 安装构建依赖和静态链接支持
+RUN apk add --no-cache \
+    openssl-dev \
+    zlib-dev \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    musl-static
+
+# 克隆并编译 wrk2 为静态二进制
 RUN git clone https://github.com/giltene/wrk2 && \
     cd wrk2 && \
     git checkout $WRK2_COMMIT_HASH && \
     make CC="musl-gcc" CFLAGS="-static"
 
-# 最小镜像（纯静态）
+# 最小化 scratch 镜像
 FROM scratch
 COPY --from=build /wrk2/wrk /wrk
 ENTRYPOINT ["/wrk"]
