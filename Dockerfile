@@ -1,83 +1,13 @@
-# # 多架构编译环境
-# FROM --platform=$BUILDPLATFORM alpine AS builder
+# Stage 1: Build wrk from source
+FROM alpine:3.12 AS build
+RUN apk add --no-cache openssl-dev zlib-dev git make gcc musl-dev libbsd-dev
+RUN git clone https://github.com/wg/wrk.git && \
+    cd wrk && make
 
-# ARG TARGETARCH
-# ARG WITH_LUAJIT=/usr/local
-# ARG LUAJIT_INC=${WITH_LUAJIT}/include/luajit-2.1
-# ARG LUAJIT_LIB=${WITH_LUAJIT}/lib
-
-# RUN apk add --no-cache \
-#     build-base \
-#     git \
-#     openssl-dev \
-#     curl \
-#     cmake \
-#     unzip \
-#     perl
-
-# # 构建 LuaJIT（默认支持 ARM64 和 x86_64）
-# RUN git clone https://github.com/LuaJIT/LuaJIT \
-#  && cd LuaJIT \
-#  && make -j$(nproc) \
-#  && make install PREFIX=${WITH_LUAJIT}
-
-# # 链接头文件
-# RUN for hdr in lua.h lauxlib.h lualib.h luaconf.h lua.hpp luajit.h; do \
-#       ln -s ${LUAJIT_INC}/$hdr ${WITH_LUAJIT}/include/$hdr; \
-#     done
-
-# # 构建 wrk
-# WORKDIR /wrk
-# RUN git clone https://github.com/bailangvvk/wrk.git . \
-#  && sed -i '/openssl-1.1.1i/d' Makefile \
-#  && sed -i '/obj\/lib\/libssl.a/d' Makefile \
-#  && make WITH_LUAJIT=${WITH_LUAJIT} \
-#          LUAJIT_INC=${WITH_LUAJIT}/include \
-#          LUAJIT_LIB=${WITH_LUAJIT}/lib \
-#          WITH_OPENSSL=/usr \
-#          OPENSSL_INC=/usr/include \
-#          OPENSSL_LIB=/usr/lib
-
-# # 运行镜像（超小体积）
-# FROM alpine
-
-# # 安装运行时依赖
-# RUN apk add --no-cache \
-#     openssl \
-#     libgcc
-
-# # 拷贝 LuaJIT 动态库
-# COPY --from=builder /usr/local/lib/libluajit-5.1.so.2* /usr/lib/
-
-# # 拷贝 wrk 可执行文件
-# COPY --from=builder /wrk/wrk /usr/local/bin/wrk
-
-# ENTRYPOINT ["wrk"]
-# CMD ["--help"]
-
-FROM alpine:3.18 as build
-ARG WRK2_COMMIT_HASH=44a94c17d8e6a0bac8559b53da76848e430cb7a7
-
-# 添加 testing 仓库以启用 musl-static 包
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-
-# 安装构建依赖和静态链接支持
-RUN apk add --no-cache \
-    openssl-dev \
-    zlib-dev \
-    git \
-    make \
-    gcc \
-    musl-dev \
-    musl-static
-
-# 克隆并编译 wrk2 为静态二进制
-RUN git clone https://github.com/giltene/wrk2 && \
-    cd wrk2 && \
-    git checkout $WRK2_COMMIT_HASH && \
-    make CC="musl-gcc" CFLAGS="-static"
-
-# 最小化 scratch 镜像
-FROM scratch
-COPY --from=build /wrk2/wrk /wrk
-ENTRYPOINT ["/wrk"]
+# Stage 2: Minimal runtime
+FROM alpine:3.12
+RUN apk add --no-cache libgcc
+RUN adduser -D -H wrk_user
+USER wrk_user
+COPY --from=build /wrk/wrk /usr/bin/wrk
+ENTRYPOINT ["/usr/bin/wrk"]
