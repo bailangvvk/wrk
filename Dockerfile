@@ -29,7 +29,8 @@ FROM alpine:3.12 AS build
 
 # 安装构建 wrk 及静态链接所需依赖
 RUN apk add --no-cache \
-    git make gcc musl-dev musl-utils libbsd-dev openssl-dev zlib-dev perl
+    git make gcc musl-dev musl-utils \
+    libbsd-dev openssl-dev zlib-dev perl
 
 # 克隆 wrk
 RUN git clone https://github.com/wg/wrk.git
