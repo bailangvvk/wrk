@@ -27,13 +27,16 @@
 
 FROM alpine:3.12 AS build
 
+# 安装构建 wrk 及静态链接所需依赖
 RUN apk add --no-cache \
-    git make gcc musl-dev libbsd-dev openssl-dev zlib-dev perl \
-    && git clone https://github.com/wg/wrk.git && cd wrk && make
+    git make gcc musl-dev musl-utils libbsd-dev openssl-dev zlib-dev perl
 
-# 静态链接构建
+# 克隆 wrk
+RUN git clone https://github.com/wg/wrk.git
+
+# 构建 wrk 为静态链接二进制
 RUN cd wrk && make clean && \
-    make CC="musl-gcc" LDFLAGS="-static" CFLAGS="-O2 -static"
+    make CC="musl-gcc" LDFLAGS="-static" CFLAGS="-O3 -static"
 
 FROM scratch
 COPY --from=build /wrk/wrk /wrk
